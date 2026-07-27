@@ -1,6 +1,0 @@
-{
-  "name": "Liga NODO Ladies 2026",
-  "description": "Tabla de posiciones y ranking oficial para la Liga NODO Ladies 2026 en Villa Ramallo, Argentina.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
