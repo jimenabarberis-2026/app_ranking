@@ -84,6 +84,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [selectedTournament, setSelectedTournament] = useState<TournamentType>('unico');
   const [customTournament, setCustomTournament] = useState(''); // texto libre si elige "Otro"
   const [resultSuccessMsg, setResultSuccessMsg] = useState('');
+  const [resultSearch, setResultSearch] = useState(''); // buscador de resultados cargados
 
   // Form states - Next Fixture
   const [fixtureDate, setFixtureDate] = useState(nextFixture.dateText);
@@ -768,8 +769,27 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     <h4 className="text-xs font-black uppercase text-white/70 mb-2">
                       Resultados Cargados ({results.length})
                     </h4>
+
+                    {/* Buscador: filtra por apellido, nombre, fecha o torneo */}
+                    <input
+                      type="text"
+                      value={resultSearch}
+                      onChange={(e) => setResultSearch(e.target.value)}
+                      placeholder="Buscar por jugadora, fecha (F4) o torneo (Suma 12)..."
+                      className="mb-2 w-full px-3 py-2 rounded-xl bg-[#162D28] border border-[#2d574e] text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#c6f135]"
+                    />
+
                     <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-                      {results.map((r) => {
+                      {results
+                        .filter((r) => {
+                          if (!resultSearch.trim()) return true;
+                          const p = players.find((x) => x.id === r.playerId);
+                          if (!p) return false;
+                          const q = resultSearch.toLowerCase();
+                          const hay = `${p.lastName} ${p.name} ${r.dateId} ${tournamentLabel(r.tournament)} ${RESULT_LABELS[r.resultType]?.full || ''}`.toLowerCase();
+                          return hay.includes(q);
+                        })
+                        .map((r) => {
                         const p = players.find((x) => x.id === r.playerId);
                         if (!p) return null;
                         const label = RESULT_LABELS[r.resultType];
