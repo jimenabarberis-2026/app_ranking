@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Player, ResultRecord, NextFixture, DateSchedule, Category, DateId, ResultType, ComputedPlayerRanking } from './types';
+import { Player, ResultRecord, NextFixture, DateSchedule, Category, DateId, ResultType, TournamentType, ComputedPlayerRanking } from './types';
 import { INITIAL_NEXT_FIXTURE, INITIAL_PLAYERS, INITIAL_RESULTS, INITIAL_DATES_SCHEDULE } from './data/initialSeed';
 import * as api from './data/api';
 import { computeRankingsForCategory } from './utils/points';
@@ -87,8 +87,8 @@ export default function App() {
   };
 
   // Guardar resultado
-  const handleSaveResult = async (result: { playerId: string; dateId: DateId; resultType: ResultType }) => {
-    const ok = await api.saveResult(result.playerId, result.dateId, result.resultType);
+  const handleSaveResult = async (result: { playerId: string; dateId: DateId; resultType: ResultType; tournament: TournamentType }) => {
+    const ok = await api.saveResult(result.playerId, result.dateId, result.resultType, result.tournament);
     if (ok) await fetchLeagueData();
     return ok;
   };

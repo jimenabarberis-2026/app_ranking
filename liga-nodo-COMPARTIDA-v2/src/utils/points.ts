@@ -1,4 +1,4 @@
-import { Category, DateId, ResultType, Player, ResultRecord, ComputedPlayerRanking, DateResultDetail } from '../types';
+import { Category, DateId, ResultType, TournamentType, Player, ResultRecord, ComputedPlayerRanking, DateResultDetail, DateGroup } from '../types';
 
 export const RESULT_POINTS: Record<ResultType, number> = {
   P: 20,
@@ -6,6 +6,25 @@ export const RESULT_POINTS: Record<ResultType, number> = {
   F: 30,
   C: 40,
 };
+
+// Opciones sugeridas para el desplegable de "Torneo" al cargar un resultado.
+// 'unico' es la jornada normal. El resto pueden coexistir en la misma fecha.
+// La admin también puede escribir un nombre libre ("Otro...").
+export const TOURNAMENT_OPTIONS: { value: TournamentType; label: string }[] = [
+  { value: 'unico', label: 'Categ. Pura' },
+  { value: 'Suma 12', label: 'Suma 12' },
+  { value: 'Suma 13', label: 'Suma 13' },
+  { value: 'Suma 15', label: 'Suma 15' },
+];
+
+// Etiqueta legible de un torneo (para mostrar en pantalla).
+// 'Categ. Pura' es el torneo de la propia categoría; no necesita mostrarse como chip
+// salvo que convivan varios torneos en la fecha.
+export function tournamentLabel(t?: TournamentType): string {
+  if (!t || t === 'unico') return 'Categ. Pura';
+  const found = TOURNAMENT_OPTIONS.find((o) => o.value === t);
+  return found ? found.label : t; // si es libre, se muestra tal cual
+}
 
 export const RESULT_LABELS: Record<ResultType, { short: string; full: string; bgClass: string; textClass: string }> = {
   P: { short: 'Part.', full: 'Participación', bgClass: 'bg-emerald-900/60 border-emerald-700/50', textClass: 'text-emerald-300' },
@@ -27,7 +46,11 @@ export const DATE_NAMES: Record<DateId, string> = {
 
 /**
  * Computes rankings for a given category with sorting and consistency bonus.
- * Consistency Bonus: +15 pts if player played >= 4 dates.
+ * Consistency Bonus: +15 pts if player played >= 4 distinct dates.
+ *
+ * Una jugadora puede tener VARIOS resultados en la misma fecha (varios torneos:
+ * p.ej. Suma 12 y Suma 15). Todos esos puntos se SUMAN. Para el bonus se cuentan
+ * FECHAS DISTINTAS (no cantidad de torneos): jugar 2 torneos en F4 = 1 fecha.
  */
 export function computeRankingsForCategory(
   players: Player[],
@@ -39,7 +62,7 @@ export function computeRankingsForCategory(
   const rankings: ComputedPlayerRanking[] = categoryPlayers.map((player) => {
     const playerResults = results.filter((r) => r.playerId === player.id);
 
-    const dateBreakdown: Record<DateId, DateResultDetail | null> = {
+    const dateBreakdown: Record<DateId, DateGroup | null> = {
       F1: null,
       F2: null,
       F3: null,
@@ -55,15 +78,40 @@ export function computeRankingsForCategory(
       const pts = RESULT_POINTS[r.resultType] || 0;
       basePoints += pts;
       countsByResult[r.resultType] = (countsByResult[r.resultType] || 0) + 1;
-      dateBreakdown[r.dateId] = {
+
+      const detail: DateResultDetail = {
         dateId: r.dateId,
         resultType: r.resultType,
+        tournament: r.tournament || 'unico',
         points: pts,
         label: RESULT_LABELS[r.resultType]?.full || r.resultType,
       };
+
+      // Agrupar por fecha: si ya hay un torneo cargado en esa fecha, se agrega a la lista.
+      const existing = dateBreakdown[r.dateId];
+      if (existing) {
+        existing.details.push(detail);
+        existing.points += pts;
+      } else {
+        dateBreakdown[r.dateId] = {
+          dateId: r.dateId,
+          details: [detail],
+          points: pts,
+        };
+      }
     });
 
-    const datesPlayedCount = playerResults.length;
+    // Ordenar los torneos dentro de cada fecha de mejor a peor resultado (C > F > SF > P).
+    const resultRank: Record<ResultType, number> = { C: 4, F: 3, SF: 2, P: 1 };
+    ALL_DATES.forEach((d) => {
+      const g = dateBreakdown[d];
+      if (g && g.details.length > 1) {
+        g.details.sort((x, y) => resultRank[y.resultType] - resultRank[x.resultType]);
+      }
+    });
+
+    // Bonus por FECHAS DISTINTAS jugadas (no por cantidad de torneos).
+    const datesPlayedCount = ALL_DATES.filter((d) => dateBreakdown[d] !== null).length;
     const hasConsistencyBonus = datesPlayedCount >= 4; // Threshold is explicitly 4 dates
     const consistencyBonusPoints = hasConsistencyBonus ? 15 : 0;
     const totalPoints = basePoints + consistencyBonusPoints;

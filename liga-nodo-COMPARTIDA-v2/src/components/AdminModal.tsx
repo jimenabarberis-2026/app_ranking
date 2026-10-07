@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Player, ResultRecord, NextFixture, DateSchedule, Category, DateId, ResultType, ComputedPlayerRanking } from '../types';
-import { ALL_DATES, DATE_NAMES, RESULT_LABELS, computeRankingsForCategory } from '../utils/points';
+import { Player, ResultRecord, NextFixture, DateSchedule, Category, DateId, ResultType, TournamentType, ComputedPlayerRanking } from '../types';
+import { ALL_DATES, DATE_NAMES, RESULT_LABELS, TOURNAMENT_OPTIONS, tournamentLabel, computeRankingsForCategory } from '../utils/points';
 import { toPng } from 'html-to-image';
 import { Logo } from './Logo';
 import {
@@ -38,7 +38,7 @@ interface AdminModalProps {
   datesSchedule?: DateSchedule[];
   onAddPlayer: (player: { name: string; lastName: string; category: Category }) => Promise<boolean>;
   onDeletePlayer: (id: string) => Promise<boolean>;
-  onSaveResult: (result: { playerId: string; dateId: DateId; resultType: ResultType }) => Promise<boolean>;
+  onSaveResult: (result: { playerId: string; dateId: DateId; resultType: ResultType; tournament: TournamentType }) => Promise<boolean>;
   onDeleteResult: (id: string) => Promise<boolean>;
   onUpdateFixture: (fixture: NextFixture) => Promise<boolean>;
   onUpdateDatesSchedule?: (schedule: DateSchedule[]) => Promise<boolean>;
@@ -81,6 +81,8 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [selectedDateId, setSelectedDateId] = useState<DateId>('F1');
   const [selectedResultType, setSelectedResultType] = useState<ResultType>('P');
+  const [selectedTournament, setSelectedTournament] = useState<TournamentType>('unico');
+  const [customTournament, setCustomTournament] = useState(''); // texto libre si elige "Otro"
   const [resultSuccessMsg, setResultSuccessMsg] = useState('');
 
   // Form states - Next Fixture
@@ -151,15 +153,23 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     e.preventDefault();
     if (!selectedPlayerId) return;
 
+    // Resolver el torneo: si eligió "Otro", usar el texto libre; si está vacío, cae en 'unico'.
+    const tournament: TournamentType =
+      selectedTournament === '__otro__'
+        ? (customTournament.trim() || 'unico')
+        : selectedTournament;
+
     const ok = await onSaveResult({
       playerId: selectedPlayerId,
       dateId: selectedDateId,
       resultType: selectedResultType,
+      tournament,
     });
 
     if (ok) {
       const p = players.find((x) => x.id === selectedPlayerId);
-      setResultSuccessMsg(`¡Resultado guardado para ${p?.lastName} (${selectedDateId})!`);
+      const tLabel = tournament === 'unico' ? '' : ` · ${tournamentLabel(tournament)}`;
+      setResultSuccessMsg(`¡Resultado guardado para ${p?.lastName} (${selectedDateId}${tLabel})!`);
       setTimeout(() => setResultSuccessMsg(''), 3000);
     }
   };
@@ -711,6 +721,38 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                         </div>
                       </div>
 
+                      {/* Torneo / Formato dentro de la fecha */}
+                      <div>
+                        <label className="block text-xs font-bold text-white/80 mb-1">
+                          Torneo / Formato
+                        </label>
+                        <select
+                          value={selectedTournament}
+                          onChange={(e) => setSelectedTournament(e.target.value as TournamentType)}
+                          className="w-full px-3 py-2 rounded-xl bg-[#162D28] border border-[#2d574e] text-xs text-white focus:outline-none focus:border-[#c6f135]"
+                        >
+                          {TOURNAMENT_OPTIONS.map((t) => (
+                            <option key={t.value} value={t.value}>
+                              {t.label}
+                            </option>
+                          ))}
+                          <option value="__otro__">Otro... (escribir)</option>
+                        </select>
+                        {selectedTournament === '__otro__' && (
+                          <input
+                            type="text"
+                            value={customTournament}
+                            onChange={(e) => setCustomTournament(e.target.value)}
+                            placeholder="Nombre del torneo (ej: Suma 14)"
+                            className="mt-2 w-full px-3 py-2 rounded-xl bg-[#162D28] border border-[#2d574e] text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#c6f135]"
+                          />
+                        )}
+                        <p className="mt-1 text-[10px] text-white/40 leading-snug">
+                          Usá "Categ. Pura" para el torneo de su categoría. Si además jugó un
+                          suma, cargá un segundo resultado eligiendo el suma: los puntos se suman.
+                        </p>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={!selectedPlayerId}
@@ -744,6 +786,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                               <span className="ml-2 text-[10px] text-white/60">
                                 {r.dateId} &bull; {label?.full} ({label?.short})
                               </span>
+                              {r.tournament && r.tournament !== 'unico' && (
+                                <span className="ml-1.5 inline-block px-1.5 py-0.5 rounded-md bg-[#c6f135]/15 text-[#c6f135] text-[9px] font-bold align-middle">
+                                  {tournamentLabel(r.tournament)}
+                                </span>
+                              )}
                             </div>
 
                             <button

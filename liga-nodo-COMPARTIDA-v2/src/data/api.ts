@@ -1,4 +1,4 @@
-import { NextFixture, DateSchedule, Category, DateId, ResultType, Subscriber } from '../types';
+import { NextFixture, DateSchedule, Category, DateId, ResultType, TournamentType, Subscriber } from '../types';
 
 // ---------------------------------------------------------------------------
 // Cliente de datos: habla con la función serverless /api/league.
@@ -52,8 +52,8 @@ export async function deletePlayer(id: string): Promise<boolean> {
   return ok;
 }
 
-export async function saveResult(playerId: string, dateId: DateId, resultType: ResultType): Promise<boolean> {
-  const { ok } = await post('save-result', { playerId, dateId, resultType });
+export async function saveResult(playerId: string, dateId: DateId, resultType: ResultType, tournament: TournamentType = 'unico'): Promise<boolean> {
+  const { ok } = await post('save-result', { playerId, dateId, resultType, tournament });
   return ok;
 }
 

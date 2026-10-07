@@ -1,6 +1,6 @@
 import React from 'react';
 import { ComputedPlayerRanking, DateId } from '../types';
-import { ALL_DATES, DATE_NAMES, RESULT_LABELS } from '../utils/points';
+import { ALL_DATES, DATE_NAMES, RESULT_LABELS, tournamentLabel } from '../utils/points';
 import { X, Sparkles, Trophy, Calendar, CheckCircle2, CircleDashed } from 'lucide-react';
 
 interface PlayerDetailModalProps {
@@ -70,30 +70,48 @@ export const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({
 
         <div className="space-y-2 mb-5 max-h-[260px] overflow-y-auto pr-1">
           {ALL_DATES.map((dateId) => {
-            const detail = dateBreakdown[dateId];
+            const group = dateBreakdown[dateId];
             const dateName = DATE_NAMES[dateId];
 
-            if (detail) {
-              const labelInfo = RESULT_LABELS[detail.resultType];
+            if (group) {
+              const multi = group.details.length > 1;
               return (
                 <div
                   key={dateId}
-                  className="flex items-center justify-between p-3 rounded-xl bg-[#1D3B35]/80 border border-[#2d574e]"
+                  className="p-3 rounded-xl bg-[#1D3B35]/80 border border-[#2d574e]"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-[#c6f135] shrink-0" />
-                    <div>
+                  {/* Encabezado de la fecha */}
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#c6f135] shrink-0" />
                       <div className="text-xs font-bold text-white">{dateName}</div>
-                      <div className="text-[11px] text-white/60">
-                        {labelInfo?.full || detail.resultType}
-                      </div>
                     </div>
+                    {multi && (
+                      <span className="text-[11px] font-black text-[#c6f135]">
+                        {group.points} pts en total
+                      </span>
+                    )}
                   </div>
 
-                  <div className="text-right">
-                    <span className={`inline-block px-2 py-0.5 rounded-lg border text-xs font-extrabold ${labelInfo?.bgClass} ${labelInfo?.textClass}`}>
-                      +{detail.points} pts
-                    </span>
+                  {/* Un reglón por torneo jugado esa fecha */}
+                  <div className={multi ? 'space-y-1 pl-6' : 'pl-6'}>
+                    {group.details.map((detail, i) => {
+                      const labelInfo = RESULT_LABELS[detail.resultType];
+                      const tLabel = tournamentLabel(detail.tournament);
+                      return (
+                        <div key={i} className="flex items-center justify-between">
+                          <div className="text-[11px] text-white/70">
+                            {multi && (
+                              <span className="font-bold text-white/90">{tLabel}: </span>
+                            )}
+                            {labelInfo?.full || detail.resultType}
+                          </div>
+                          <span className={`inline-block px-2 py-0.5 rounded-lg border text-xs font-extrabold ${labelInfo?.bgClass} ${labelInfo?.textClass}`}>
+                            +{detail.points} pts
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );

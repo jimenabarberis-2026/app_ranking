@@ -4,6 +4,12 @@ export type ResultType = 'P' | 'SF' | 'F' | 'C'; // P: Participación (20), SF: 
 
 export type DateId = 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6';
 
+// Torneo / formato dentro de una misma fecha.
+// 'unico' = jornada normal de un solo torneo. El resto son torneos que pueden
+// coexistir en la misma fecha. Es texto libre: estos son los sugeridos del
+// desplegable, pero la admin puede escribir cualquier otro nombre ("Otro...").
+export type TournamentType = string; // 'unico' | '8va' | '7ma' | '6ta' | 'Suma 12' | 'Suma 13' | 'Suma 15' | <libre>
+
 export interface Player {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export interface ResultRecord {
   playerId: string;
   dateId: DateId;
   resultType: ResultType;
+  tournament?: TournamentType; // undefined / 'unico' = torneo único de la fecha
   updatedAt: string;
 }
 
@@ -54,8 +61,16 @@ export interface PublicLeagueData {
 export interface DateResultDetail {
   dateId: DateId;
   resultType: ResultType;
+  tournament: TournamentType;
   points: number;
   label: string;
+}
+
+// Agrupa todos los resultados de una misma fecha (uno o varios torneos).
+export interface DateGroup {
+  dateId: DateId;
+  details: DateResultDetail[]; // uno o más torneos jugados esa fecha
+  points: number; // suma de los puntos de todos los torneos de la fecha
 }
 
 export interface ComputedPlayerRanking {
@@ -67,7 +82,7 @@ export interface ComputedPlayerRanking {
   datesPlayedCount: number;
   hasConsistencyBonus: boolean; // played >= 4 dates
   consistencyBonusPoints: number; // 15 if datesPlayedCount >= 4 else 0
-  dateBreakdown: Record<DateId, DateResultDetail | null>;
+  dateBreakdown: Record<DateId, DateGroup | null>;
   countsByResult: {
     C: number;
     F: number;

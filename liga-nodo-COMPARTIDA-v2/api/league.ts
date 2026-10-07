@@ -207,6 +207,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         case 'save-result': {
           const { playerId, dateId, resultType } = body;
+          // Torneo/formato dentro de la fecha. Por defecto 'unico' (jornada normal).
+          const tournament = body.tournament ? String(body.tournament).trim() : 'unico';
           if (
             !playerId ||
             !VALID_DATE_IDS.includes(dateId) ||
@@ -217,11 +219,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           if (!db.players.some((p: any) => p.id === playerId)) {
             return res.status(404).json({ success: false, error: 'La participante no existe' });
           }
-          const idx = db.results.findIndex((r: any) => r.playerId === playerId && r.dateId === dateId);
+          // Se identifica por jugadora + fecha + torneo: dos torneos distintos en la
+          // misma fecha conviven; recargar el mismo torneo corrige el resultado existente.
+          const idx = db.results.findIndex(
+            (r: any) =>
+              r.playerId === playerId &&
+              r.dateId === dateId &&
+              (r.tournament || 'unico') === tournament
+          );
           if (idx >= 0) {
-            db.results[idx] = { ...db.results[idx], resultType, updatedAt: now() };
+            db.results[idx] = { ...db.results[idx], resultType, tournament, updatedAt: now() };
           } else {
-            db.results.push({ id: genId('r'), playerId, dateId, resultType, updatedAt: now() });
+            db.results.push({ id: genId('r'), playerId, dateId, resultType, tournament, updatedAt: now() });
           }
           await saveData(db);
           return res.status(200).json({ success: true });
@@ -327,6 +336,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         playerId: existing.id,
                         dateId,
                         resultType,
+                        tournament: 'unico',
                         updatedAt: now(),
                       });
                       addedResultsCount++;
