@@ -98,20 +98,41 @@ export const PlayerDetailModal: React.FC<PlayerDetailModalProps> = ({
                     {group.details.map((detail, i) => {
                       const labelInfo = RESULT_LABELS[detail.resultType];
                       const tLabel = tournamentLabel(detail.tournament);
+                      // En fechas con 2+ torneos, solo el primero (mejor) suma puntos.
+                      const cuenta = !multi || i === 0;
                       return (
                         <div key={i} className="flex items-center justify-between">
-                          <div className="text-[11px] text-white/70">
+                          <div className={`text-[11px] ${cuenta ? 'text-white/70' : 'text-white/40'}`}>
                             {multi && (
-                              <span className="font-bold text-white/90">{tLabel}: </span>
+                              <span className={`font-bold ${cuenta ? 'text-white/90' : 'text-white/50'}`}>{tLabel}: </span>
                             )}
                             {labelInfo?.full || detail.resultType}
+                            {multi && !cuenta && <span className="ml-1 italic">(no suma)</span>}
                           </div>
-                          <span className={`inline-block px-2 py-0.5 rounded-lg border text-xs font-extrabold ${labelInfo?.bgClass} ${labelInfo?.textClass}`}>
-                            +{detail.points} pts
-                          </span>
+                          {cuenta ? (
+                            <span className={`inline-block px-2 py-0.5 rounded-lg border text-xs font-extrabold ${labelInfo?.bgClass} ${labelInfo?.textClass}`}>
+                              +{detail.points} pts
+                            </span>
+                          ) : (
+                            <span className="inline-block px-2 py-0.5 text-[10px] text-white/30 line-through">
+                              +{detail.points}
+                            </span>
+                          )}
                         </div>
                       );
                     })}
+
+                    {/* Plus por jugar 2+ torneos la misma fecha */}
+                    {multi && group.multiBonus > 0 && (
+                      <div className="flex items-center justify-between pt-0.5">
+                        <div className="text-[11px] font-bold text-[#c6f135]">
+                          Plus 2 torneos misma fecha
+                        </div>
+                        <span className="inline-block px-2 py-0.5 rounded-lg border border-[#c6f135]/40 bg-[#c6f135]/15 text-[#c6f135] text-xs font-extrabold">
+                          +{group.multiBonus} pts
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

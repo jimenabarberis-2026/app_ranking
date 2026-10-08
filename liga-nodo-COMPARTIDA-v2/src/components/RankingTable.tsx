@@ -46,12 +46,17 @@ export const RankingTable: React.FC<RankingTableProps> = ({
       </div>
 
       {/* Rules Banner Info */}
-      <div className="flex items-center justify-between text-[11px] text-white/60 px-1 mb-2.5 font-medium">
-        <span>Puntos: C=40 &bull; F=30 &bull; SF=25 &bull; P=20</span>
-        <span className="text-[#c6f135] flex items-center gap-1 font-bold">
-          <Sparkles className="w-3 h-3" />
-          Bonus +15 (&ge;4 fechas)
-        </span>
+      <div className="text-[11px] text-white/60 px-1 mb-2.5 font-medium space-y-1">
+        <div className="flex items-center justify-between">
+          <span>Puntos: C=40 &bull; F=30 &bull; SF=25 &bull; P=20</span>
+          <span className="text-[#c6f135] flex items-center gap-1 font-bold">
+            <Sparkles className="w-3 h-3" />
+            Bonus +15 (&ge;4 fechas)
+          </span>
+        </div>
+        <div className="text-white/50">
+          Cada fecha cuenta tu mejor resultado &bull; Plus +10 por jugar 2 torneos la misma fecha
+        </div>
       </div>
 
       {/* Ranking List */}

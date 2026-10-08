@@ -44,13 +44,18 @@ export const DATE_NAMES: Record<DateId, string> = {
   F6: 'Fecha 6 (Noviembre)',
 };
 
+// Plus fijo por jugar 2 o más torneos en la misma fecha.
+export const MULTI_TOURNAMENT_BONUS = 10;
+
 /**
- * Computes rankings for a given category with sorting and consistency bonus.
- * Consistency Bonus: +15 pts if player played >= 4 distinct dates.
+ * Computes rankings for a given category.
  *
- * Una jugadora puede tener VARIOS resultados en la misma fecha (varios torneos:
- * p.ej. Suma 12 y Suma 15). Todos esos puntos se SUMAN. Para el bonus se cuentan
- * FECHAS DISTINTAS (no cantidad de torneos): jugar 2 torneos en F4 = 1 fecha.
+ * REGLA DE PUNTAJE POR FECHA:
+ *  - Cada fecha cuenta UN solo resultado: el MEJOR del día (C > F > SF > P).
+ *  - Si la jugadora jugó 2+ torneos esa fecha, se suma un PLUS fijo de +10
+ *    ("Plus 2 torneos misma fecha"). No se suman los dos resultados enteros.
+ *
+ * BONUS DE CONSTANCIA: +15 pts si jugó >= 4 fechas distintas (no torneos).
  */
 export function computeRankingsForCategory(
   players: Player[],
@@ -58,6 +63,7 @@ export function computeRankingsForCategory(
   category: Category
 ): ComputedPlayerRanking[] {
   const categoryPlayers = players.filter((p) => p.category === category);
+  const resultRank: Record<ResultType, number> = { C: 4, F: 3, SF: 2, P: 1 };
 
   const rankings: ComputedPlayerRanking[] = categoryPlayers.map((player) => {
     const playerResults = results.filter((r) => r.playerId === player.id);
@@ -71,14 +77,9 @@ export function computeRankingsForCategory(
       F6: null,
     };
 
-    let basePoints = 0;
-    const countsByResult = { C: 0, F: 0, SF: 0, P: 0 };
-
+    // 1) Agrupar todos los resultados por fecha
     playerResults.forEach((r) => {
       const pts = RESULT_POINTS[r.resultType] || 0;
-      basePoints += pts;
-      countsByResult[r.resultType] = (countsByResult[r.resultType] || 0) + 1;
-
       const detail: DateResultDetail = {
         dateId: r.dateId,
         resultType: r.resultType,
@@ -86,31 +87,39 @@ export function computeRankingsForCategory(
         points: pts,
         label: RESULT_LABELS[r.resultType]?.full || r.resultType,
       };
-
-      // Agrupar por fecha: si ya hay un torneo cargado en esa fecha, se agrega a la lista.
       const existing = dateBreakdown[r.dateId];
       if (existing) {
         existing.details.push(detail);
-        existing.points += pts;
       } else {
         dateBreakdown[r.dateId] = {
           dateId: r.dateId,
           details: [detail],
-          points: pts,
+          bestPoints: 0,
+          multiBonus: 0,
+          points: 0,
         };
       }
     });
 
-    // Ordenar los torneos dentro de cada fecha de mejor a peor resultado (C > F > SF > P).
-    const resultRank: Record<ResultType, number> = { C: 4, F: 3, SF: 2, P: 1 };
+    // 2) Para cada fecha: ordenar torneos, tomar el MEJOR y aplicar el plus si hubo 2+
+    let basePoints = 0;
+    const countsByResult = { C: 0, F: 0, SF: 0, P: 0 };
+
     ALL_DATES.forEach((d) => {
       const g = dateBreakdown[d];
-      if (g && g.details.length > 1) {
-        g.details.sort((x, y) => resultRank[y.resultType] - resultRank[x.resultType]);
-      }
+      if (!g) return;
+      // Mejor resultado primero
+      g.details.sort((x, y) => resultRank[y.resultType] - resultRank[x.resultType]);
+      const best = g.details[0];
+      g.bestPoints = best.points;
+      g.multiBonus = g.details.length >= 2 ? MULTI_TOURNAMENT_BONUS : 0;
+      g.points = g.bestPoints + g.multiBonus;
+      basePoints += g.points;
+      // El conteo para desempates usa solo el resultado que cuenta (el mejor del día)
+      countsByResult[best.resultType] = (countsByResult[best.resultType] || 0) + 1;
     });
 
-    // Bonus por FECHAS DISTINTAS jugadas (no por cantidad de torneos).
+    // 3) Bonus por FECHAS DISTINTAS jugadas (no por cantidad de torneos).
     const datesPlayedCount = ALL_DATES.filter((d) => dateBreakdown[d] !== null).length;
     const hasConsistencyBonus = datesPlayedCount >= 4; // Threshold is explicitly 4 dates
     const consistencyBonusPoints = hasConsistencyBonus ? 15 : 0;

@@ -67,10 +67,13 @@ export interface DateResultDetail {
 }
 
 // Agrupa todos los resultados de una misma fecha (uno o varios torneos).
+// Regla: cuenta el MEJOR resultado del día; si jugó 2+ torneos, suma un plus fijo.
 export interface DateGroup {
   dateId: DateId;
-  details: DateResultDetail[]; // uno o más torneos jugados esa fecha
-  points: number; // suma de los puntos de todos los torneos de la fecha
+  details: DateResultDetail[];   // todos los torneos jugados esa fecha (para mostrar)
+  bestPoints: number;            // puntos del mejor resultado del día (el que cuenta)
+  multiBonus: number;            // +10 si jugó 2+ torneos esa fecha, si no 0
+  points: number;                // total de la fecha = bestPoints + multiBonus
 }
 
 export interface ComputedPlayerRanking {
